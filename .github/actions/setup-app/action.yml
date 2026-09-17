@@ -1,0 +1,47 @@
+name: Setup app
+description: Prepare workspace dependencies for scheduled jobs
+
+inputs:
+  deploy-key:
+    description: SSH private key for source checkout
+    required: true
+  source-repo:
+    description: owner/name of the source repository
+    required: true
+  extras:
+    description: uv sync extras
+    required: false
+    default: "--extra data --extra mongo --extra redis"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.source-repo }}
+        ssh-key: ${{ inputs.deploy-key }}
+        path: app
+        fetch-depth: 1
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: app/uv.lock
+
+    - name: Sync deps
+      shell: bash
+      working-directory: app
+      run: uv sync ${{ inputs.extras }}
+
+    - name: Ensure dirs
+      shell: bash
+      working-directory: app
+      run: |
+        mkdir -p logs data/portable/staging data/portable/features
+        echo "FINROBOT_STAGING_DIR=$GITHUB_WORKSPACE/app/data/portable" >> "$GITHUB_ENV"
+        echo "FINROBOT_PORTABLE_DIR=$GITHUB_WORKSPACE/app/data/portable" >> "$GITHUB_ENV"
+        if [ -z "${FINROBOT_PK_MONGODB_DATABASE:-}" ]; then
+          echo "FINROBOT_PK_MONGODB_DATABASE=finrobot_pk" >> "$GITHUB_ENV"
+        fi

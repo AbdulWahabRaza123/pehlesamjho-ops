@@ -1,0 +1,6 @@
+# Ignore local secrets / keys if ever dropped here
+.env
+.env.*
+*.pem
+id_ed25519*
+pehlesamjho-ops-deploy*
